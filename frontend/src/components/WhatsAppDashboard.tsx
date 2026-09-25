@@ -1,4 +1,11 @@
+// @ts-nocheck
+﻿import OrdersPage from './OrdersPage';
+import AnalyticsPage from './AnalyticsPage';
+import PredefinedVoicesPage from './PredefinedVoicesPage';
+import LiveConversations from './LiveConversations';
+import { SharedVoiceRecorder } from './SharedVoiceRecorder';
 import React, { useState, useEffect, useRef } from 'react';
+
 import { 
     Package, 
     MessageSquare, 
@@ -33,7 +40,11 @@ import {
     Move,
     Shield,
     Sparkles,
-    Copy
+    Copy,
+    ClipboardList,
+    FileKey,
+    BarChart2,
+    
 } from 'lucide-react';
 
 const apiGuidanceData = {
@@ -76,6 +87,9 @@ interface Product {
   voice_note_url: string | null;
   created_at: string;
 }
+
+
+
 
 interface ImageItem {
   id: string;
@@ -159,8 +173,16 @@ function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
 }
 
 const WhatsAppDashboard = () => {
-    const [subTab, setSubTab] = useState<'products' | 'conversations' | 'settings'>('products');
+    const [subTab, setSubTab] = useState<'products' | 'conversations' | 'orders' | 'policies' | 'predefined_voices' | 'analytics' | 'settings'>('products');
+
+
     const [products, setProducts] = useState<Product[]>([]);
+                
+        const [voicePolicyUrl, setVoicePolicyUrl] = useState<string | null>(null);
+    const [isPolicyRecording, setIsPolicyRecording] = useState(false);
+    const policyMediaRecorderRef = useRef<MediaRecorder | null>(null);
+    
+                
     const [loading, setLoading] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -261,7 +283,61 @@ const WhatsAppDashboard = () => {
         setLoading(false);
     };
 
-    // Fetch agent config
+    const fetchVoicePolicy = async () => {
+        try {
+            const res = await fetch('/api/policies/voice');
+            const data = await res.json();
+            if (data.success && data.url) setVoicePolicyUrl(data.url);
+        } catch(e) { console.error(e); }
+    };
+
+    useEffect(() => { fetchVoicePolicy(); }, []);
+
+    const handleUploadVoice = async (file: File | Blob) => {
+        const formData = new FormData();
+        formData.append('audio', file);
+        try {
+            const res = await fetch('/api/policies/voice', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) setVoicePolicyUrl(data.url);
+        } catch (error) { console.error('Upload failed', error); }
+    };
+
+    const startPolicyRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            policyMediaRecorderRef.current = mediaRecorder;
+            const audioChunks: BlobPart[] = [];
+            
+            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                handleUploadVoice(audioBlob);
+            };
+            
+            mediaRecorder.start();
+            setIsPolicyRecording(true);
+        } catch (e) { alert('Microphone access denied'); }
+    };
+
+    const stopPolicyRecording = () => {
+        if (policyMediaRecorderRef.current) {
+            policyMediaRecorderRef.current.stop();
+            setIsPolicyRecording(false);
+            policyMediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+        }
+    };
+
+
+    
+    
+    
+    
+
     const fetchAgentConfig = async () => {
         try {
             const res = await fetch('/api/agent-config');
@@ -513,6 +589,17 @@ const WhatsAppDashboard = () => {
         } catch (err) {
             alert('Microphone access denied or not supported by browser.');
             console.error('Mic access error:', err);
+        }
+    };
+
+    
+    const stopRecording = () => {
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.stop();
+            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+            setIsRecording(false);
+            setIsPaused(false);
+            mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
         }
     };
 
@@ -1243,6 +1330,8 @@ const WhatsAppDashboard = () => {
         }
     };
 
+    
+
     const resumeRecording = () => {
         if (mediaRecorderRef.current && isRecording && isPaused) {
             mediaRecorderRef.current.resume();
@@ -1253,14 +1342,7 @@ const WhatsAppDashboard = () => {
         }
     };
 
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            setIsPaused(false);
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-        }
-    };
+    
 
     const clearAudio = () => {
         if (audioPreviewUrl && audioPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
@@ -1409,7 +1491,7 @@ const WhatsAppDashboard = () => {
                 alert('Error: ' + data.error);
             }
         } catch (err) {
-            alert('Failed to save product.');
+            alert('Failed to save product: ' + (((err as Error).message || err)));
         }
     };
 
@@ -1484,13 +1566,40 @@ const WhatsAppDashboard = () => {
                         Live Conversations
                     </button>
                     <button 
-                        onClick={() => setSubTab('settings')}
+                        onClick={() => setSubTab('orders')}
                         className={`text-left px-4 py-3 rounded-xl font-medium text-xs transition-all flex items-center gap-3 ${
-                            subTab === 'settings' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
+                            subTab === 'orders' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
                         }`}
                     >
-                        <Settings size={17} />
-                        Configuration
+                        <CheckCircle size={17} />
+                        Orders & Invoices
+                    </button>
+                    <button 
+                        onClick={() => setSubTab('policies')}
+                        className={`text-left px-4 py-3 rounded-xl font-medium text-xs transition-all flex items-center gap-3 ${
+                            subTab === 'policies' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
+                        }`}
+                    >
+                        <Shield size={17} />
+                        Policies & Rules
+                    </button>
+                    <button 
+                        onClick={() => setSubTab('predefined_voices')}
+                        className={`text-left px-4 py-3 rounded-xl font-medium text-xs transition-all flex items-center gap-3 ${
+                            subTab === 'predefined_voices' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
+                        }`}
+                    >
+                        <Mic size={17} />
+                        Predefined Voices
+                    </button>
+                    <button 
+                        onClick={() => setSubTab('analytics')}
+                        className={`text-left px-4 py-3 rounded-xl font-medium text-xs transition-all flex items-center gap-3 ${
+                            subTab === 'analytics' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
+                        }`}
+                    >
+                        <BarChart2 size={17} />
+                        Analytics & Insights
                     </button>
                 </nav>
 
@@ -1611,7 +1720,7 @@ const WhatsAppDashboard = () => {
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-2 text-teal-400 font-semibold text-xs uppercase tracking-wider mb-2">
                                                     <FileText size={16} />
-                                                    Step 1 — Product Specifications
+                                                    Step 1 â€” Product Specifications
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1709,7 +1818,7 @@ const WhatsAppDashboard = () => {
                                             <div className="space-y-6">
                                                 <div className="flex items-center gap-2 text-teal-400 font-semibold text-xs uppercase tracking-wider mb-2">
                                                     <Camera size={16} />
-                                                    Step 2 — Multi-Image Gallery & Alignment Controls
+                                                    Step 2 â€” Multi-Image Gallery & Alignment Controls
                                                 </div>
 
                                                 {/* Images Upload */}
@@ -1848,529 +1957,33 @@ const WhatsAppDashboard = () => {
                                             </div>
                                         )}
 
-                                        {/* PHASE 3: VOICE NOTE RECORDING & TIMELINE PUNCH-IN OVERWRITE */}
-                                        {activePhase === 3 && (
-                                            <div className="space-y-6">
-                                                <div className="flex items-center gap-2 text-teal-400 font-semibold text-xs uppercase tracking-wider mb-2">
-                                                    <Mic size={16} />
-                                                    Step 3 — Product Voice Note Pitch & Timeline Studio
-                                                </div>
-
-                                                <div className="bg-[#050D10] border border-teal-900/40 rounded-xl p-6 text-center">
-                                                    <p className="text-xs font-semibold text-slate-200 mb-1">Record & Edit Audio Note</p>
-                                                    <p className="text-[11px] text-slate-400 mb-6">
-                                                        Record voice note. You can Pause/Resume anytime, or scrub the timeline to Overwrite from any position!
-                                                    </p>
-
-                                                    {/* Recording Controls */}
-                                                    <div className="flex flex-col items-center justify-center gap-4">
-                                                        {!isRecording && !audioPreviewUrl && (
-                                                            <button 
-                                                                type="button"
-                                                                onClick={() => startRecording()}
-                                                                className="w-16 h-16 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center shadow-xl shadow-teal-600/40 transition-all transform hover:scale-105"
-                                                            >
-                                                                <Mic size={28} />
-                                                            </button>
-                                                        )}
-
-                                                        {isRecording && (
-                                                            <div className="space-y-4">
-                                                                <div className="flex items-center justify-center gap-3">
-                                                                    <span className={`w-3 h-3 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-red-500 animate-ping'}`} />
-                                                                    <span className="font-mono text-2xl font-bold text-teal-400">
-                                                                        {formatTimer(recordingTime)}
-                                                                    </span>
-                                                                    {isPaused && (
-                                                                        <span className="text-xs bg-amber-950/80 text-amber-400 px-2 py-0.5 rounded font-bold border border-amber-800">PAUSED</span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Pause / Resume / Stop Buttons */}
-                                                                <div className="flex items-center justify-center gap-3">
-                                                                    {!isPaused ? (
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={pauseRecording}
-                                                                            className="bg-amber-600/90 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
-                                                                        >
-                                                                            <Pause size={14} /> Pause
-                                                                        </button>
-                                                                    ) : (
-                                                                        <button 
-                                                                            type="button"
-                                                                            onClick={resumeRecording}
-                                                                            className="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
-                                                                        >
-                                                                            <Play size={14} /> Resume
-                                                                        </button>
-                                                                    )}
-
-                                                                    <button 
-                                                                        type="button"
-                                                                        onClick={stopRecording}
-                                                                        className="bg-red-600/90 hover:bg-red-500 text-white px-5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow"
-                                                                    >
-                                                                        <Square size={14} className="fill-current" /> Finish Recording
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Recorded Audio Studio Player & Timeline Punch-In Overwrite */}
-                                                        {audioPreviewUrl && !isRecording && (
-                                                            <div className="w-full max-w-lg bg-[#0A1A20] border border-teal-900/40 rounded-xl p-5 space-y-4">
-                                                                <div className="flex items-center justify-between text-xs font-semibold text-teal-400">
-                                                                    <span className="flex items-center gap-1.5"><Volume2 size={16} /> Recorded Voice Note</span>
-                                                                    <span className="text-slate-400 text-[11px]">Duration: {formatTimer(audioDuration)}</span>
-                                                                </div>
-
-                                                                <audio 
-                                                                    ref={audioElementRef}
-                                                                    src={audioPreviewUrl} 
-                                                                    controls 
-                                                                    className="w-full rounded-lg"
-                                                                    onLoadedMetadata={() => {
-                                                                        if (audioElementRef.current) setAudioDuration(audioElementRef.current.duration || 0);
-                                                                    }}
-                                                                    onTimeUpdate={() => {
-                                                                        if (audioElementRef.current) setSeekTime(audioElementRef.current.currentTime || 0);
-                                                                    }}
-                                                                />
-
-                                                                  {/* Toggle Button for CapCut Visual Editor */}
-                                                                  <button 
-                                                                      type="button"
-                                                                      onClick={() => setShowTimelineEditor(!showTimelineEditor)}
-                                                                      className="w-full bg-[#0B1E26] hover:bg-teal-950 text-teal-300 border border-teal-800/40 py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow transition-all cursor-pointer"
-                                                                  >
-                                                                      <Scissors size={15} /> 
-                                                                      {showTimelineEditor ? 'Hide CapCut Audio Editor' : 'Open CapCut Timeline Editor (Multi-Cut & Mouse Trim)'}
-                                                                  </button>
-
-                                                                  {/* CapCut Visual Multi-Track Timeline Studio Drawer */}
-                                                                  {showTimelineEditor && (
-                                                                      <div className="bg-[#050D10] p-4.5 rounded-2xl border border-teal-500/40 shadow-2xl space-y-4 transition-all">
-                                                                          {/* Top Control Toolbar with Cut Icon */}
-                                                                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/40 pb-3">
-                                                                              <div className="flex items-center gap-2">
-                                                                                  <div className="w-7 h-7 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400">
-                                                                                      <Scissors size={15} />
-                                                                                  </div>
-                                                                                  <div>
-                                                                                      <h4 className="text-xs font-bold text-slate-100 flex items-center gap-2">
-                                                                                          CapCut Multi-Track Timeline Studio
-                                                                                      </h4>
-                                                                                      <p className="text-[10px] text-slate-400">Track 1: Main Audio | Track 2: Dedicated Voice-Over (Auto-Mutes Track 1)</p>
-                                                                                  </div>
-                                                                              </div>
-
-                                                                              {/* Action Bar */}
-                                                                              <div className="flex flex-wrap items-center gap-2">
-                                                                                  {/* PLAY / PAUSE BUTTON */}
-                                                                                  <button 
-                                                                                      type="button"
-                                                                                      onClick={togglePlayPause}
-                                                                                      className="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow shadow-teal-600/30 transition-all cursor-pointer"
-                                                                                      title="Play or Pause audio (Shortcut: Spacebar)"
-                                                                                  >
-                                                                                      {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                                                                                      {isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-                                                                                  </button>
-
-                                                                                  {/* TRACK SELECTION TOGGLE */}
-                                                                                  <div className="flex items-center bg-[#08181F] p-0.5 rounded-lg border border-teal-900/60 text-xs">
-                                                                                      <button
-                                                                                          type="button"
-                                                                                          onClick={() => setSelectedTrack('main')}
-                                                                                          className={`px-2 py-1 rounded text-[11px] font-semibold transition-all ${
-                                                                                              selectedTrack === 'main' ? 'bg-teal-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-                                                                                          }`}
-                                                                                      >
-                                                                                          Track 1 (Main)
-                                                                                      </button>
-                                                                                      <button
-                                                                                          type="button"
-                                                                                          onClick={() => setSelectedTrack('voiceover')}
-                                                                                          className={`px-2 py-1 rounded text-[11px] font-semibold transition-all ${
-                                                                                              selectedTrack === 'voiceover' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-                                                                                          }`}
-                                                                                      >
-                                                                                          Track 2 (Voice-Over)
-                                                                                      </button>
-                                                                                  </div>
-
-                                                                                  {/* RECORD VOICE-OVER AT PLAYHEAD */}
-                                                                                  <button 
-                                                                                      type="button"
-                                                                                      onClick={() => startRecording(seekTime)}
-                                                                                      className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow shadow-red-600/30 transition-all cursor-pointer"
-                                                                                      title="Record Voice-Over on Track 2 starting at playhead timestamp"
-                                                                                  >
-                                                                                      <Mic size={14} /> Record Voice-Over ({formatTimer(seekTime)})
-                                                                                  </button>
-
-                                                                                  {/* CUT / SPLIT SELECTED TRACK AT PLAYHEAD */}
-                                                                                  <button 
-                                                                                      type="button"
-                                                                                      onClick={splitClipAtPlayhead}
-                                                                                      className="bg-teal-600 hover:bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow shadow-teal-600/30 transition-all cursor-pointer"
-                                                                                      title={`Slice ${selectedTrack === 'voiceover' ? 'Track 2' : 'Track 1'} clip at current playhead position`}
-                                                                                  >
-                                                                                      <Scissors size={14} /> Cut {selectedTrack === 'voiceover' ? 'Voice-Over' : 'Main'} Track ({formatTimer(seekTime)})
-                                                                                  </button>
-
-                                                                                  {/* SLIDE / MOVE SELECTED CLIP CONTROLS */}
-                                                                                  {selectedClipId && (
-                                                                                      <div className="flex items-center gap-1 bg-[#092027] border border-teal-800/60 p-0.5 rounded-lg">
-                                                                                          <button 
-                                                                                              type="button"
-                                                                                              onClick={() => nudgeSelectedClip(-0.5)}
-                                                                                              className="px-2 py-1 rounded bg-teal-900/60 hover:bg-teal-600 text-teal-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                                                                                              title="Slide selected clip left by 0.5 sec"
-                                                                                          >
-                                                                                              <ChevronLeft size={12} /> Slide -0.5s
-                                                                                          </button>
-                                                                                          <button 
-                                                                                              type="button"
-                                                                                              onClick={() => nudgeSelectedClip(0.5)}
-                                                                                              className="px-2 py-1 rounded bg-teal-900/60 hover:bg-teal-600 text-teal-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer"
-                                                                                              title="Slide selected clip right by 0.5 sec"
-                                                                                          >
-                                                                                              Slide +0.5s <ChevronRight size={12} />
-                                                                                          </button>
-                                                                                      </div>
-                                                                                  )}
-
-                                                                                  {/* DELETE SELECTED CLIP */}
-                                                                                  <button 
-                                                                                      type="button"
-                                                                                      onClick={deleteSelectedClip}
-                                                                                      disabled={!selectedClipId}
-                                                                                      className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition-all ${
-                                                                                          selectedClipId 
-                                                                                              ? 'bg-amber-600 hover:bg-amber-500 text-white cursor-pointer' 
-                                                                                              : 'bg-slate-800 text-slate-500 opacity-50 cursor-not-allowed'
-                                                                                      }`}
-                                                                                      title="Delete highlighted clip segment"
-                                                                                  >
-                                                                                      <Trash2 size={14} /> Delete Selected Clip
-                                                                                  </button>
-
-                                                                                  {/* UNDO / REDO BUTTONS */}
-                                                                                  <div className="flex items-center gap-1 bg-[#092027] border border-teal-800/60 p-0.5 rounded-lg">
-                                                                                      <button 
-                                                                                          type="button"
-                                                                                          onClick={handleUndo}
-                                                                                          disabled={historyIndex <= 0}
-                                                                                          className={`px-2 py-1 rounded text-[11px] font-bold transition-all flex items-center gap-1 ${
-                                                                                              historyIndex > 0 
-                                                                                                  ? 'bg-teal-900/80 hover:bg-teal-600 text-teal-100 hover:text-white cursor-pointer shadow' 
-                                                                                                  : 'bg-slate-900 text-slate-600 opacity-40 cursor-not-allowed'
-                                                                                          }`}
-                                                                                          title="Undo last edit action (Shortcut: Ctrl + Z)"
-                                                                                      >
-                                                                                          <Undo2 size={13} /> Undo
-                                                                                      </button>
-                                                                                      <button 
-                                                                                          type="button"
-                                                                                          onClick={handleRedo}
-                                                                                          disabled={historyIndex >= timelineHistory.length - 1}
-                                                                                          className={`px-2 py-1 rounded text-[11px] font-bold transition-all flex items-center gap-1 ${
-                                                                                              historyIndex < timelineHistory.length - 1 
-                                                                                                  ? 'bg-teal-900/80 hover:bg-teal-600 text-teal-100 hover:text-white cursor-pointer shadow' 
-                                                                                                  : 'bg-slate-900 text-slate-600 opacity-40 cursor-not-allowed'
-                                                                                          }`}
-                                                                                          title="Redo action (Shortcut: Ctrl + Y or Ctrl + Shift + Z)"
-                                                                                      >
-                                                                                          <Redo2 size={13} /> Redo
-                                                                                      </button>
-                                                                                  </div>
-
-                                                                                  {/* RESET ALL CUTS */}
-                                                                                  <button 
-                                                                                      type="button"
-                                                                                      onClick={resetAllCuts}
-                                                                                      className="bg-[#0B1E26] hover:bg-teal-950 text-slate-300 border border-teal-800/40 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                                                                                  >
-                                                                                      <RotateCcw size={13} /> Reset Cuts
-                                                                                  </button>
-                                                                              </div>
-                                                                          </div>
-
-                                                                          {/* Multi-Track Timeline Box */}
-                                                                          <div className="space-y-2 text-left">
-                                                                              <div className="flex justify-between items-center text-[11px] font-mono text-slate-400">
-                                                                                  <span>Playhead: <strong className="text-teal-400">{formatTimer(seekTime)}</strong> / {formatTimer(audioDuration)}</span>
-                                                                                  <span className="text-slate-300 font-sans">
-                                                                                      💡 Click & drag clips horizontally or use Slide buttons to move audio pieces anywhere!
-                                                                                  </span>
-                                                                              </div>
-
-                                                                              {/* Interactive Timeline Canvas spanning both tracks */}
-                                                                              <div 
-                                                                                  ref={timelineTrackRef}
-                                                                                  onMouseDown={handleTimelineMouseDown}
-                                                                                  className="relative bg-[#08181F] rounded-xl border border-teal-900/60 overflow-hidden cursor-pointer select-none group shadow-inner space-y-1 p-1"
-                                                                              >
-                                                                                  {/* TRACK 1: MAIN AUDIO TRACK */}
-                                                                                  <div className="relative h-14 bg-[#051116] rounded-lg border border-teal-900/40 overflow-hidden flex items-center px-2">
-                                                                                      <span className="absolute top-1 left-2 text-[9px] font-bold text-teal-400/80 uppercase tracking-wider z-20 pointer-events-none">
-                                                                                          TRACK 1 — MAIN AUDIO
-                                                                                      </span>
-
-                                                                                      {/* Render Main Audio Clips (Movable with internal waveform peaks & per-clip crop handles) */}
-                                                                                      {audioDuration > 0 && mainClips.map((clip, idx) => {
-                                                                                          if (clip.isDeleted) return null;
-                                                                                          const leftPercent = (clip.start / audioDuration) * 100;
-                                                                                          const widthPercent = ((clip.end - clip.start) / audioDuration) * 100;
-                                                                                          const isSelected = selectedClipId === clip.id;
-
-                                                                                          // Slice peak waveform for this clip's source PCM region so waveform moves WITH the clip box!
-                                                                                          const totalPeaks = waveformPeaks.length > 0 ? waveformPeaks.length : 72;
-                                                                                          const srcStart = clip.sourceStart !== undefined ? clip.sourceStart : clip.start;
-                                                                                          const srcEnd = srcStart + (clip.end - clip.start);
-                                                                                          const startIdx = Math.max(0, Math.floor((srcStart / audioDuration) * totalPeaks));
-                                                                                          const endIdx = Math.min(totalPeaks, Math.max(startIdx + 4, Math.ceil((srcEnd / audioDuration) * totalPeaks)));
-                                                                                          const clipPeaks = (waveformPeaks.length > 0 ? waveformPeaks : Array.from({ length: 72 }).map(() => 45)).slice(startIdx, endIdx);
-
-                                                                                          return (
-                                                                                              <div 
-                                                                                                  key={clip.id}
-                                                                                                  onMouseDown={(e) => handleClipMouseDown(e, clip)}
-                                                                                                  onClick={(e) => {
-                                                                                                      e.stopPropagation();
-                                                                                                      setSelectedClipId(clip.id);
-                                                                                                      setSelectedTrack('main');
-                                                                                                  }}
-                                                                                                  className={`absolute top-1 bottom-1 rounded-lg border-2 flex items-center justify-between px-2 transition-all cursor-grab active:cursor-grabbing z-10 overflow-hidden ${
-                                                                                                      isSelected 
-                                                                                                          ? 'bg-teal-500/50 border-teal-400 shadow-[0_0_14px_rgba(20,184,166,0.7)] text-white ring-2 ring-teal-300' 
-                                                                                                          : 'bg-teal-950/90 border-teal-800/80 hover:border-teal-400 text-teal-200'
-                                                                                                  }`}
-                                                                                                  style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                                                                                                  title="Drag clip to move. Drag left/right handle edges to crop/trim clip."
-                                                                                              >
-                                                                                                  {/* Left Edge Crop Handle */}
-                                                                                                  <div
-                                                                                                      onMouseDown={(e) => handleClipTrimMouseDown(e, clip, 'start')}
-                                                                                                      onClick={(e) => e.stopPropagation()}
-                                                                                                      className="absolute left-0 top-0 bottom-0 w-2 bg-teal-400 hover:bg-white cursor-ew-resize z-30 flex items-center justify-center transition-colors group/leftTrim"
-                                                                                                      title="Drag left edge to crop/trim start"
-                                                                                                  >
-                                                                                                      <div className="w-0.5 h-3.5 bg-teal-950 rounded-full" />
-                                                                                                  </div>
-
-                                                                                                  {/* Waveform Peaks INSIDE the clip box so voice moves WITH the clip! */}
-                                                                                                  <div className="absolute inset-0 flex items-center justify-between px-2 opacity-40 pointer-events-none z-0">
-                                                                                                      {clipPeaks.map((height, i) => (
-                                                                                                          <div 
-                                                                                                              key={i} 
-                                                                                                              className="w-0.5 bg-teal-300 rounded-full" 
-                                                                                                              style={{ height: `${height}%` }}
-                                                                                                          />
-                                                                                                      ))}
-                                                                                                  </div>
-
-                                                                                                  <div className="flex items-center gap-1 text-[10px] font-bold truncate pointer-events-none z-10 pl-1.5">
-                                                                                                      <Move size={11} className="text-teal-400/90 flex-shrink-0" />
-                                                                                                      <span className="truncate">{clip.name || `Main Clip #${idx + 1}`} ({formatTimer(clip.start)} - {formatTimer(clip.end)})</span>
-                                                                                                  </div>
-                                                                                                  {isSelected && (
-                                                                                                      <div className="flex items-center gap-1 z-20 mr-1.5">
-                                                                                                          <button
-                                                                                                              type="button"
-                                                                                                              onClick={(e) => {
-                                                                                                                  e.stopPropagation();
-                                                                                                                  deleteSelectedClip();
-                                                                                                              }}
-                                                                                                              className="p-1 bg-red-600 hover:bg-red-500 text-white rounded cursor-pointer transition-colors shadow flex items-center justify-center"
-                                                                                                              title="Delete this selected clip piece (Or press Delete / Backspace key)"
-                                                                                                          >
-                                                                                                              <Trash2 size={10} />
-                                                                                                          </button>
-                                                                                                          <span className="text-[8px] bg-teal-600 px-1 py-0.5 rounded font-bold uppercase tracking-wider text-white pointer-events-none">
-                                                                                                              Selected
-                                                                                                          </span>
-                                                                                                      </div>
-                                                                                                  )}
-
-                                                                                                  {/* Right Edge Crop Handle */}
-                                                                                                  <div
-                                                                                                      onMouseDown={(e) => handleClipTrimMouseDown(e, clip, 'end')}
-                                                                                                      onClick={(e) => e.stopPropagation()}
-                                                                                                      className="absolute right-0 top-0 bottom-0 w-2 bg-teal-400 hover:bg-white cursor-ew-resize z-30 flex items-center justify-center transition-colors group/rightTrim"
-                                                                                                      title="Drag right edge to crop/trim end"
-                                                                                                  >
-                                                                                                      <div className="w-0.5 h-3.5 bg-teal-950 rounded-full" />
-                                                                                                  </div>
-                                                                                              </div>
-                                                                                          );
-                                                                                      })}
-
-                                                                                      {/* Auto-Mute Red Indicator overlay on Track 1 where Voice-Over exists on Track 2 */}
-                                                                                      {audioDuration > 0 && voiceoverClips.map(vo => {
-                                                                                          if (vo.isDeleted) return null;
-                                                                                          const leftPercent = (vo.start / audioDuration) * 100;
-                                                                                          const widthPercent = ((vo.end - vo.start) / audioDuration) * 100;
-                                                                                          return (
-                                                                                              <div
-                                                                                                  key={`silenced-${vo.id}`}
-                                                                                                  className="absolute top-0 bottom-0 bg-red-950/80 border-x-2 border-red-500/80 flex items-center justify-center pointer-events-none z-15 shadow-inner"
-                                                                                                  style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                                                                                              >
-                                                                                                  <span className="text-[9px] font-bold text-red-300 uppercase tracking-tight bg-black/80 px-1.5 py-0.5 rounded border border-red-800 truncate shadow">
-                                                                                                      Muted by Voice-Over
-                                                                                                  </span>
-                                                                                              </div>
-                                                                                          );
-                                                                                      })}
-                                                                                  </div>
-
-                                                                                  {/* TRACK 2: VOICE-OVER TRACK */}
-                                                                                  <div className="relative h-14 bg-[#140F08] rounded-lg border border-amber-900/40 overflow-hidden flex items-center px-2">
-                                                                                      <span className="absolute top-1 left-2 text-[9px] font-bold text-amber-400/80 uppercase tracking-wider z-20 pointer-events-none">
-                                                                                          TRACK 2 — VOICE-OVER TRACK (DEDICATED)
-                                                                                      </span>
-
-                                                                                      {/* Render Voice-Over Clips (Movable with internal waveform & per-clip crop handles) */}
-                                                                                      {audioDuration > 0 && voiceoverClips.map((vo, idx) => {
-                                                                                          if (vo.isDeleted) return null;
-                                                                                          const leftPercent = (vo.start / audioDuration) * 100;
-                                                                                          const widthPercent = ((vo.end - vo.start) / audioDuration) * 100;
-                                                                                          const isSelected = selectedClipId === vo.id;
-                                                                                          const voPeaks = Array.from({ length: 24 }).map((_, i) => Math.sin(i * 0.5) * 35 + 45);
-
-                                                                                          return (
-                                                                                              <div 
-                                                                                                  key={vo.id}
-                                                                                                  onMouseDown={(e) => handleClipMouseDown(e, vo)}
-                                                                                                  onClick={(e) => {
-                                                                                                      e.stopPropagation();
-                                                                                                      setSelectedClipId(vo.id);
-                                                                                                      setSelectedTrack('voiceover');
-                                                                                                  }}
-                                                                                                  className={`absolute top-1 bottom-1 rounded-lg border-2 flex items-center justify-between px-2 transition-all cursor-grab active:cursor-grabbing z-10 overflow-hidden ${
-                                                                                                      isSelected 
-                                                                                                          ? 'bg-amber-500/60 border-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.8)] text-white ring-2 ring-amber-300' 
-                                                                                                          : 'bg-amber-950/90 border-amber-600/80 hover:border-amber-400 text-amber-200'
-                                                                                                  }`}
-                                                                                                  style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                                                                                                  title="Drag clip to move. Drag left/right handle edges to crop/trim clip."
-                                                                                              >
-                                                                                                  {/* Left Edge Crop Handle */}
-                                                                                                  <div
-                                                                                                      onMouseDown={(e) => handleClipTrimMouseDown(e, vo, 'start')}
-                                                                                                      onClick={(e) => e.stopPropagation()}
-                                                                                                      className="absolute left-0 top-0 bottom-0 w-2 bg-amber-400 hover:bg-white cursor-ew-resize z-30 flex items-center justify-center transition-colors group/leftTrim"
-                                                                                                      title="Drag left edge to crop/trim start"
-                                                                                                  >
-                                                                                                      <div className="w-0.5 h-3.5 bg-amber-950 rounded-full" />
-                                                                                                  </div>
-
-                                                                                                  {/* Waveform Peaks INSIDE Voice-Over Clip Box */}
-                                                                                                  <div className="absolute inset-0 flex items-center justify-between px-2 opacity-40 pointer-events-none z-0">
-                                                                                                      {voPeaks.map((height, i) => (
-                                                                                                          <div 
-                                                                                                              key={i} 
-                                                                                                              className="w-0.5 bg-amber-400 rounded-full" 
-                                                                                                              style={{ height: `${height}%` }}
-                                                                                                          />
-                                                                                                      ))}
-                                                                                                  </div>
-
-                                                                                                  <div className="flex items-center gap-1 text-[10px] font-bold truncate pointer-events-none z-10 pl-1.5">
-                                                                                                      <Move size={11} className="text-amber-400/90 flex-shrink-0" />
-                                                                                                      <Mic size={11} className="text-amber-400 flex-shrink-0" />
-                                                                                                      <span className="truncate">{vo.name || `Voice-Over #${idx + 1}`} ({formatTimer(vo.start)} - {formatTimer(vo.end)})</span>
-                                                                                                  </div>
-                                                                                                  {isSelected && (
-                                                                                                      <div className="flex items-center gap-1 z-20 mr-1.5">
-                                                                                                          <button
-                                                                                                              type="button"
-                                                                                                              onClick={(e) => {
-                                                                                                                  e.stopPropagation();
-                                                                                                                  deleteSelectedClip();
-                                                                                                              }}
-                                                                                                              className="p-1 bg-red-600 hover:bg-red-500 text-white rounded cursor-pointer transition-colors shadow flex items-center justify-center"
-                                                                                                              title="Delete this selected clip piece (Or press Delete / Backspace key)"
-                                                                                                          >
-                                                                                                              <Trash2 size={10} />
-                                                                                                          </button>
-                                                                                                          <span className="text-[8px] bg-amber-600 px-1 py-0.5 rounded font-bold uppercase tracking-wider text-white pointer-events-none">
-                                                                                                              Selected
-                                                                                                          </span>
-                                                                                                      </div>
-                                                                                                  )}
-
-                                                                                                  {/* Right Edge Crop Handle */}
-                                                                                                  <div
-                                                                                                      onMouseDown={(e) => handleClipTrimMouseDown(e, vo, 'end')}
-                                                                                                      onClick={(e) => e.stopPropagation()}
-                                                                                                      className="absolute right-0 top-0 bottom-0 w-2 bg-amber-400 hover:bg-white cursor-ew-resize z-30 flex items-center justify-center transition-colors group/rightTrim"
-                                                                                                      title="Drag right edge to crop/trim end"
-                                                                                                  >
-                                                                                                      <div className="w-0.5 h-3.5 bg-amber-950 rounded-full" />
-                                                                                                  </div>
-                                                                                              </div>
-                                                                                          );
-                                                                                      })}
-                                                                                  </div>
-
-                                                                                  {/* Red Playhead Vertical Indicator Across Both Tracks */}
-                                                                                  {audioDuration > 0 && (
-                                                                                      <div 
-                                                                                          className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 pointer-events-none shadow-[0_0_10px_rgba(239,68,68,1)]"
-                                                                                          style={{ left: `${(seekTime / audioDuration) * 100}%` }}
-                                                                                      >
-                                                                                          <div className="w-2.5 h-2.5 bg-red-500 rounded-full -translate-x-[4px] -translate-y-1 border border-white" />
-                                                                                      </div>
-                                                                                  )}
-                                                                              </div>
-                                                                          </div>
-
-                                                                          {/* Footer Save & Stitch Bar */}
-                                                                          <div className="pt-2 border-t border-teal-900/40 flex items-center justify-between">
-                                                                              <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                                                                                  <Info size={13} className="text-teal-400" />
-                                                                                  <span>Track 2 Voice-Over automatically mutes Track 1 during its duration. Click Apply & Save Mix.</span>
-                                                                              </div>
-
-                                                                              <button 
-                                                                                  type="button"
-                                                                                  onClick={applyStitchingAndSave}
-                                                                                  className="bg-teal-600 hover:bg-teal-500 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-teal-600/30 transition-all cursor-pointer"
-                                                                              >
-                                                                                  <Check size={15} /> Apply & Save Multi-Track Mix
-                                                                              </button>
-                                                                          </div>
-                                                                      </div>
-                                                                  )}
-
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={clearAudio}
-                                                                    className="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center justify-center gap-1.5 mx-auto pt-1"
-                                                                >
-                                                                    <RotateCcw size={14} /> Delete & Record New Audio
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Alternative Audio Upload */}
-                                                <div className="pt-4 border-t border-teal-900/30 flex items-center justify-between">
-                                                    <span className="text-xs text-slate-400">Or select an existing audio file:</span>
-                                                    <label className="bg-[#0B1E26] hover:bg-teal-950/60 text-teal-300 border border-teal-800/40 text-xs px-3.5 py-2 rounded-lg font-semibold cursor-pointer transition-colors flex items-center gap-1.5">
-                                                        <Upload size={14} /> Choose Audio File
-                                                        <input type="file" accept="audio/*" onChange={handleAudioFileUpload} className="hidden" />
-                                                    </label>
-                                                </div>
+                                    {/* PHASE 3: VOICE NOTE RECORDING & TIMELINE PUNCH-IN OVERWRITE */}
+                                    <div className={activePhase === 3 ? 'block' : 'hidden'}>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                                                <Mic size={20} />
                                             </div>
-                                        )}
+                                            <div>
+                                                <h3 className="text-xl font-bold text-slate-100">AI Voice Description</h3>
+                                                <p className="text-xs text-slate-400 mt-1">Record a persuasive voice note about this product.</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-[#09181E] border border-teal-900/40 rounded-xl p-6 mb-6">
+                                            <SharedVoiceRecorder 
+                                                initialAudioUrl={null}
+                                                onAudioChange={(blob: Blob | null) => {
+                                                    setAudioBlob(blob);
+                                                    if (blob) {
+                                                        const url = URL.createObjectURL(blob);
+                                                        setAudioPreviewUrl(url);
+                                                    } else {
+                                                        setAudioPreviewUrl(null);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-
+                                    </div>
                                     {/* Modal Footer Controls */}
                                     <div className="px-6 py-4 bg-[#0B1D25] border-t border-teal-900/40 flex items-center justify-between">
                                         <button 
@@ -2484,8 +2097,8 @@ const WhatsAppDashboard = () => {
                                                 <div>
                                                     <h4 className="font-bold text-slate-100 text-base leading-snug line-clamp-1 mb-1">{product.title}</h4>
                                                     <p className="text-xs text-slate-400 font-medium">
-                                                        {product.brand && `${product.brand} · `}{product.gender} · Size: {product.size_original || 'N/A'}
-                                                        {product.color && ` · ${product.color}`}
+                                                        {product.brand && `${product.brand} Â· `}{product.gender} Â· Size: {product.size_original || 'N/A'}
+                                                        {product.color && ` Â· ${product.color}`}
                                                     </p>
                                                 </div>
 
@@ -2544,7 +2157,7 @@ const WhatsAppDashboard = () => {
                         <div className="bg-[#09181E] border border-teal-800/40 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
                             <div className="px-5 py-4 bg-[#0B1D25] border-b border-teal-900/40 flex items-center justify-between">
                                 <h5 className="text-xs font-bold text-slate-200">
-                                    {activeMediaPreview.type === 'video' ? 'Product Video Showcase' : 'Product Voice Pitch Note'} — {activeMediaPreview.title}
+                                    {activeMediaPreview.type === 'video' ? 'Product Video Showcase' : 'Product Voice Pitch Note'} â€” {activeMediaPreview.title}
                                 </h5>
                                 <button onClick={() => setActiveMediaPreview(null)} className="text-slate-400 hover:text-white p-1 rounded-lg">
                                     <X size={18} />
@@ -2582,19 +2195,78 @@ const WhatsAppDashboard = () => {
                     </div>
                 )}
 
+                
+                
                 {/* ===== CONVERSATIONS TAB ===== */}
-                {subTab === 'conversations' && (
-                    <div>
-                        <h3 className="text-2xl font-bold text-slate-100 mb-2">Live Conversations</h3>
-                        <p className="text-slate-400 text-xs mb-6">Monitor real-time WhatsApp incoming chats and take over AI responses anytime.</p>
-                        <div className="border border-dashed border-teal-900/30 rounded-2xl h-72 flex flex-col items-center justify-center text-slate-500">
-                            <MessageSquare size={48} className="mb-3 text-teal-800" />
-                            <p className="font-semibold text-slate-300">No active customer chats yet</p>
-                            <p className="text-xs text-slate-500 mt-1">Live customer messages on WhatsApp will appear here</p>
+                {subTab === "conversations" && (
+                    <LiveConversations />
+                )}
+
+                {/* ===== ORDERS TAB ===== */}
+                {subTab === 'orders' && (
+                    <OrdersPage />
+                )}
+
+                {/* ===== POLICIES TAB ===== */}
+                {subTab === 'policies' && (
+                    <div className="space-y-6 pb-10 max-w-5xl">
+                        <div className="flex items-center justify-between mb-4 pb-4 border-b border-teal-900/30">
+                            <div>
+                                <h3 className="text-2xl font-bold text-slate-100 tracking-tight">Agent Voice Policy</h3>
+                                <p className="text-slate-400 text-xs mt-1">Record or upload a single voice note containing all your store policies. The AI Agent will send this audio directly to customers.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-[#09181E] border border-teal-900/40 rounded-2xl p-8 shadow-xl text-center">
+                            <SharedVoiceRecorder 
+                                initialAudioUrl={voicePolicyUrl}
+                                onAudioChange={async (blob: Blob | null) => {
+                                    if (!blob) {
+                                        try {
+                                            const res = await fetch('/api/policies/voice', { method: 'DELETE' });
+                                            if (res.ok) {
+                                                setVoicePolicyUrl('');
+                                                alert('Voice policy deleted successfully!');
+                                            }
+                                        } catch (err) {
+                                            console.error('Error deleting voice policy:', err);
+                                        }
+                                        return;
+                                    }
+                                    const formData = new FormData();
+                                    formData.append('audio', blob, 'policy.wav');
+                                    
+                                    try {
+                                        const res = await fetch('/api/policies/voice', {
+                                            method: 'POST',
+                                            body: formData
+                                        });
+                                        const data = await res.json();
+                                        if (data.success) {
+                                            setVoicePolicyUrl(data.url);
+                                            alert('Voice policy saved successfully!');
+                                        } else {
+                                            alert('Failed to save policy');
+                                        }
+                                    } catch (err) {
+                                        console.error('Error saving voice policy:', err);
+                                        alert('Error saving policy');
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
                 )}
-
+                {/* ===== ANALYTICS TAB ===== */}
+                {subTab === 'predefined_voices' && (<PredefinedVoicesPage />)}
+                {subTab === 'analytics' && (
+                    <div className="flex-1 overflow-auto bg-[#0a0f1c] p-6 lg:p-8">
+                        <div className="max-w-7xl mx-auto">
+                            <AnalyticsPage />
+                        </div>
+                    </div>
+                )}
+                
                 {/* ===== CONFIGURATION TAB ===== */}
                 {subTab === 'settings' && (
                     <div className="space-y-6 max-w-4xl pb-10">
@@ -2803,5 +2475,6 @@ const WhatsAppDashboard = () => {
         </div>
     );
 };
+
 
 export default WhatsAppDashboard;

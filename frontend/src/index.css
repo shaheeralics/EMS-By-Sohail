@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@media print {
+  /* Hide everything globally */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only the invoice content */
+  #invoice-content, #invoice-content * {
+    visibility: visible;
+  }
+  
+  /* Position the invoice at the very top of the printed page */
+  #invoice-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 2rem !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Any elements specifically hidden in print (like buttons, images) */
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}

@@ -39,6 +39,22 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET search products
+router.get('/search/query', async (req, res) => {
+    try {
+        const search = req.query.q || '';
+        const [rows] = await db.query(`
+            SELECT * FROM products 
+            WHERE title LIKE ? OR brand LIKE ?
+            LIMIT 20
+        `, [`%${search}%`, `%${search}%`]);
+        res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error('Product search error:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
 // GET single product
 router.get('/:id', async (req, res) => {
     try {
@@ -87,17 +103,11 @@ const processImageOrdering = (req) => {
 router.post('/', uploadMedia, async (req, res) => {
     try {
         const { title, brand, gender, color, size_original, starting_price, minimum_price, description } = req.body;
-        const files = req.files || {};
-        const videoFiles = files['video'] || [];
-        const voiceFiles = files['voice_note'] || [];
-
-        const { mainImageUrl, extraImageUrls } = processImageOrdering(req);
-        const videoUrl = videoFiles.length > 0 ? `/uploads/products/${videoFiles[0].filename}` : null;
-        const voiceNoteUrl = voiceFiles.length > 0 ? `/uploads/products/${voiceFiles[0].filename}` : null;
-
+        
+        // 1. Insert Skeleton Record Immediately
         const [result] = await db.execute(`
-            INSERT INTO products (title, brand, gender, color, size_original, starting_price, minimum_price, description, source, main_image_url, extra_image_urls, video_url, voice_note_url, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, 'available')
+            INSERT INTO products (title, brand, gender, color, size_original, starting_price, minimum_price, description, source, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual', 'uploading')
         `, [
             title || 'Untitled Product',
             brand || null,
@@ -106,14 +116,35 @@ router.post('/', uploadMedia, async (req, res) => {
             size_original || null,
             parseFloat(starting_price) || 0,
             parseFloat(minimum_price) || 0,
-            description || null,
-            mainImageUrl,
-            extraImageUrls,
-            videoUrl,
-            voiceNoteUrl
+            description || null
         ]);
 
-        res.json({ success: true, id: result.insertId, message: 'Product created successfully' });
+        const productId = result.insertId;
+
+        // 2. Return Success Immediately (Frontend XHR completes)
+        res.json({ success: true, id: productId, message: 'Product created and uploading in background' });
+
+        // 3. Process Uploads in Background (Simulated Cloud Upload)
+        (async () => {
+            try {
+                const files = req.files || {};
+                const videoFiles = files['video'] || [];
+                const voiceFiles = files['voice_note'] || [];
+
+                const { mainImageUrl, extraImageUrls } = processImageOrdering(req);
+                const videoUrl = videoFiles.length > 0 ? `/uploads/products/${videoFiles[0].filename}` : null;
+                const voiceNoteUrl = voiceFiles.length > 0 ? `/uploads/products/${voiceFiles[0].filename}` : null;
+
+                await db.execute(`
+                    UPDATE products SET main_image_url = ?, extra_image_urls = ?, video_url = ?, voice_note_url = ?, status = 'available'
+                    WHERE id = ?
+                `, [mainImageUrl, extraImageUrls, videoUrl, voiceNoteUrl, productId]);
+
+            } catch (bgErr) {
+                console.error('Background upload failed for product', productId, bgErr);
+            }
+        })();
+
     } catch (err) {
         console.error('Failed to create product:', err);
         res.status(500).json({ success: false, error: 'Failed to create product' });
@@ -155,6 +186,8 @@ router.put('/:id', uploadMedia, async (req, res) => {
         if (voiceFiles.length > 0) {
             updateQuery += `, voice_note_url = ?`;
             params.push(`/uploads/products/${voiceFiles[0].filename}`);
+        } else if (req.body.remove_voice === 'true') {
+            updateQuery += `, voice_note_url = NULL`;
         }
 
         updateQuery += ` WHERE id = ?`;
@@ -199,5 +232,7 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to delete product' });
     }
 });
+
+
 
 module.exports = router;
