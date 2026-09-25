@@ -20,10 +20,20 @@ const whatsappRoutes = require('./modules/whatsapp');
 const shopifyRoutes = require('./modules/shopify');
 const apiRoutes = require('./modules/api');
 const productRoutes = require('./modules/api/products');
+const orderRoutes = require('./modules/api/orders');
+const policyRoutes = require('./modules/api/policies');
+const aiRoutes = require('./modules/api/ai');
+const analyticsRoutes = require('./modules/api/analytics');
+const predefinedVoicesRoutes = require('./modules/api/predefined_voices');
 
 app.use('/webhook/whatsapp', whatsappRoutes);
 app.use('/api/listings', shopifyRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/policies', policyRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/predefined-voices', predefinedVoicesRoutes);
 app.use('/api', apiRoutes);
 
 // Catch-all to serve frontend index.html for React Router

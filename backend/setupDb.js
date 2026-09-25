@@ -62,6 +62,7 @@ async function setupDatabase() {
             CREATE TABLE IF NOT EXISTS conversations (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 customer_phone VARCHAR(50) NOT NULL UNIQUE,
+                customer_name VARCHAR(100),
                 status VARCHAR(50) DEFAULT 'agent_active',
                 known_slots JSON,
                 selected_product_id INT,
@@ -97,6 +98,35 @@ async function setupDatabase() {
         await connection.execute(`
             INSERT IGNORE INTO agent_config (id, system_prompt) 
             VALUES (1, 'You are a helpful AI assistant for Pawanda e-commerce.')
+        `);
+
+        // 6. Orders
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS orders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                conversation_id INT,
+                product_id INT,
+                customer_name VARCHAR(100) NOT NULL,
+                customer_phone VARCHAR(50) NOT NULL,
+                address TEXT,
+                price DECIMAL(10, 2),
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
+                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+            )
+        `);
+
+        // 7. Policies
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS policies (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
         `);
 
         console.log('All tables created successfully.');
