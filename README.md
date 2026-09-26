@@ -171,8 +171,8 @@ Pawanda is designed to automate conversational commerce. It is the perfect solut
 ## 👨‍💻 Author
 
 <div align="center">
-  <a href="https://anees.devsil.com">
-    <img src="https://github.com/aneeskhann5577-dotcom.png" width="150" style="border-radius: 50%; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);" alt="Anees Ur Rehman" />
+  <a href="https://github.com/aneesofficial">
+    <img src="https://github.com/aneesofficial.png" width="150" style="border-radius: 50%; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);" alt="Anees Ur Rehman" />
   </a>
   <br />
   <h3><b>Anees Ur Rehman</b></h3>
@@ -183,7 +183,7 @@ Pawanda is designed to automate conversational commerce. It is the perfect solut
       <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/chrome/chrome-original.svg" width="30" alt="Website" title="Portfolio" />
     </a>
     &nbsp;&nbsp;
-    <a href="https://github.com/aneeskhann5577-dotcom">
+    <a href="https://github.com/aneesofficial">
       <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" width="30" alt="GitHub" title="GitHub" />
     </a>
     &nbsp;&nbsp;
