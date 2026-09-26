@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>🚀 Pawanda - AI Commerce Agent</h1>
-  <p><strong>Next-Generation AI E-Commerce Automation & Admin Dashboard</strong></p>
+  <h1>Pawanda - AI Commerce Agent & E-Commerce Automation</h1>
+  <p><strong>Next-Generation Autonomous WhatsApp Agent & Admin Dashboard</strong></p>
 
   <p align="center">
     <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" height="40" alt="React" title="React" />
@@ -19,22 +19,81 @@
 
 <br />
 
-## 🌟 Overview
-
-**Pawanda** is an enterprise-grade E-Commerce Automation platform powered by AI. It seamlessly integrates a **Google Gemini-backed WhatsApp Agent** with a beautifully designed, high-performance Admin Dashboard. 
-
-Designed to operate autonomously, the AI handles live customer conversations, product catalog inquiries, intelligent price negotiation (with strict boundary adherence), and end-to-end order processing—all visible in real-time through the premium Dark Mode dashboard.
+## Table of Contents
+- [About the Project](#-about-the-project)
+- [How We Built It](#-how-we-built-it)
+- [Use Cases & Applications](#-use-cases--applications)
+- [Core Features](#-core-features)
+- [System Architecture](#-system-architecture)
+- [Gallery & Screenshots](#-gallery--screenshots)
+- [Installation & Setup](#-installation--setup)
+- [Author & Contact](#-author)
 
 ---
 
-## ✨ Core Features
+## 📖 About the Project
 
-- 🤖 **AI WhatsApp Agent:** Fully autonomous AI agent capable of conversational commerce, dynamic negotiations, and handling custom business policies.
-- 💬 **Live Conversations:** Real-time monitoring and takeover capabilities for active AI-customer WhatsApp threads.
-- 🛍️ **Advanced Product Catalog:** Manage products with rich media (Images, Videos, and AI Voice Notes), setting asking prices and absolute minimum negotiation thresholds.
-- 📦 **Order & Invoice Management:** Professional document-style order processing with dynamic invoice generation (Original Price vs. Negotiated Discount).
-- 📈 **Analytics & Insights:** Granular KPIs, sales trends, top-selling products, and revenue tracking.
-- ⚙️ **AI Customization:** Define exact business rules, prompt injections, and predefined voice profiles for the agent.
+**Pawanda** is an enterprise-grade E-Commerce Automation platform designed to bridge the gap between businesses and consumers on WhatsApp. 
+
+In traditional e-commerce, customer support and manual order processing scale poorly and suffer from high latency. **Pawanda solves this by introducing a highly intelligent, Google Gemini-backed AI agent** that acts as a fully autonomous salesperson on WhatsApp. The agent can chat with customers, showcase products from the dynamic catalog, negotiate prices securely within admin-defined boundaries, and finalize orders seamlessly. 
+
+The entire operation is visible to administrators in real-time through a beautifully engineered, high-performance Dark Mode dashboard, ensuring complete control and insight over the automated business.
+
+---
+
+## 🛠 How We Built It
+
+The platform was meticulously engineered using a modern, scalable technology stack:
+
+- **Frontend (Client):** Built using **React.js (Vite)** and **TypeScript** for lightning-fast rendering and strict type safety. We implemented **Tailwind CSS** to create a premium, glassmorphism-inspired dark UI. For data visualization, we utilized **Recharts** to plot dynamic revenue and sales trends.
+- **Backend (Server):** Powered by **Node.js** and **Express.js** providing a robust RESTful API. We utilized **Multer** to handle multipart form data for uploading heavy product assets, including high-resolution images, videos, and dynamic AI voice notes.
+- **Database:** A highly optimized **MySQL** relational database schema ensures strict transactional integrity for Orders, Inventory, Pricing, and Analytics.
+- **AI Integration:** The conversational engine is driven by the **Google Generative AI SDK**. We engineered a custom context-injection layer that feeds real-time database knowledge (Product Catalog, Minimum Prices, Store Policies) directly into the AI's prompt space, allowing it to negotiate like a real human while adhering to strict business rules.
+
+---
+
+## 🎯 Use Cases & Applications
+
+Pawanda is designed to automate conversational commerce. It is the perfect solution for:
+1. **Direct-to-Consumer (D2C) Brands:** Automating WhatsApp storefronts where customers prefer chatting over browsing a website.
+2. **Wholesalers & B2B Businesses:** Allowing clients to negotiate bulk prices autonomously within pre-approved thresholds.
+3. **Dropshipping Stores:** Managing large influxes of customer queries regarding product details, sizing, and delivery seamlessly without human intervention.
+4. **Local Commerce & Thrifting:** Managing dynamic pricing environments where bargaining and price negotiation are culturally expected.
+
+---
+
+## ⚡ Core Features
+
+<table>
+  <tr>
+    <td width="5%"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" width="24"/></td>
+    <td><strong>Autonomous AI WhatsApp Agent:</strong> A fully integrated AI capable of conversational commerce, contextual understanding, and answering complex product inquiries.</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/comments.svg" width="24"/></td>
+    <td><strong>Live Conversation Monitoring:</strong> Real-time dashboard view of active AI-customer WhatsApp threads with manual override capabilities.</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/tags.svg" width="24"/></td>
+    <td><strong>Dynamic Pricing & Negotiation:</strong> Define "Starting Prices" and "Minimum Negotiable Thresholds". The AI intelligently negotiates with customers to maximize profit while securing the sale.</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/box-open.svg" width="24"/></td>
+    <td><strong>Advanced Product Catalog:</strong> Support for rich media uploads including multiple images, product videos, and predefined AI Voice Notes to send to customers.</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/file-invoice-dollar.svg" width="24"/></td>
+    <td><strong>Order & Invoice Management:</strong> Professional order processing with dynamic invoice generation (calculating Original Catalog Price, AI-Negotiated Discount, and Delivery Fees).</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/chart-line.svg" width="24"/></td>
+    <td><strong>Granular Analytics & Insights:</strong> KPI tracking, sales trends, top-selling products, and AI performance metrics powered by interactive Recharts.</td>
+  </tr>
+  <tr>
+    <td width="5%"><img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/sliders.svg" width="24"/></td>
+    <td><strong>AI Customization & Policies:</strong> Define exact business rules, prompt injections, and predefined voice profiles to strictly control the agent's personality and boundaries.</td>
+  </tr>
+</table>
 
 ---
 
@@ -73,14 +132,14 @@ Designed to operate autonomously, the AI handles live customer conversations, pr
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Setup
 
 ### Prerequisites
 - Node.js (v18+)
 - MySQL Server (XAMPP or standalone)
 - Google Gemini API Key
 
-### Installation
+### Local Development Setup
 
 1. **Clone the repository:**
    ```bash
@@ -92,16 +151,19 @@ Designed to operate autonomously, the AI handles live customer conversations, pr
    ```bash
    cd backend
    npm install
-   # Configure your .env file with DB credentials and API keys
-   node setupDb.js # Run migrations
-   npm start
+   
+   # Add your environment variables in backend/.env
+   # DB_HOST, DB_USER, DB_PASSWORD, GEMINI_API_KEY
+   
+   node setupDb.js # Run initial database migrations
+   npm start # Starts server on port 3000
    ```
 
 3. **Setup the Frontend:**
    ```bash
-   cd frontend
+   cd ../frontend
    npm install
-   npm run dev
+   npm run dev # Starts Vite server on port 5173
    ```
 
 ---
@@ -131,7 +193,7 @@ Designed to operate autonomously, the AI handles live customer conversations, pr
   </p>
 </div>
 
-Building intelligent AI systems that solve real-world problems through data, automation, and innovation. Pawanda is a testament to blending complex automated workflows with a premium UI experience.
+*Building intelligent AI systems that solve real-world problems through data, automation, and innovation. Pawanda is a testament to blending complex automated workflows with a premium UI experience.*
 
 ---
 
