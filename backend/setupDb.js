@@ -1,87 +1,83 @@
-const mysql = require('mysql2/promise');
+const db = require('./db');
 
 async function setupDatabase() {
     try {
-        const connection = await mysql.createConnection({
-            host: '127.0.0.1',
-            user: 'root',
-            password: '',
-            database: 'ecomerce_automation'
-        });
-
-        console.log('Connected to MySQL. Initializing tables...');
+        console.log('Connected to PostgreSQL (PGlite). Initializing tables...');
 
         // 1. API Settings
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS api_settings (
-                id INT PRIMARY KEY DEFAULT 1,
-                meta_token VARCHAR(255),
-                meta_phone_id VARCHAR(255),
-                meta_verify_token VARCHAR(255),
-                meta_waba_id VARCHAR(255),
-                meta_app_id VARCHAR(255),
-                meta_app_secret VARCHAR(255),
-                llm_api_key VARCHAR(255),
-                shopify_url VARCHAR(255),
-                shopify_token VARCHAR(255),
-                shopify_webhook_secret VARCHAR(255),
-                webhook_url VARCHAR(255)
+                id SERIAL PRIMARY KEY,
+                meta_token TEXT,
+                meta_phone_id TEXT,
+                meta_verify_token TEXT,
+                meta_waba_id TEXT,
+                meta_app_id TEXT,
+                meta_app_secret TEXT,
+                llm_api_key TEXT,
+                shopify_url TEXT,
+                shopify_token TEXT,
+                shopify_webhook_secret TEXT,
+                webhook_url TEXT,
+                voice_policy_url TEXT
             )
         `);
-        await connection.execute(`INSERT IGNORE INTO api_settings (id) VALUES (1)`);
+        await db.execute(`INSERT INTO api_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
 
         // 2. Products
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS products (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                brand VARCHAR(255),
-                gender VARCHAR(50) NOT NULL,
-                size VARCHAR(50),
-                size_original VARCHAR(50),
-                size_uk VARCHAR(50),
-                size_eu VARCHAR(50),
-                size_cn VARCHAR(50),
-                color VARCHAR(100),
-                source VARCHAR(50) NOT NULL,
-                main_image_url VARCHAR(1024),
-                extra_image_urls JSON,
-                video_url VARCHAR(1024),
-                voice_note_url VARCHAR(1024),
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                brand TEXT,
+                gender TEXT NOT NULL,
+                size TEXT,
+                size_original TEXT,
+                size_uk TEXT,
+                size_eu TEXT,
+                size_cn TEXT,
+                color TEXT,
+                description TEXT,
+                source TEXT NOT NULL,
+                main_image_url TEXT,
+                extra_image_urls JSONB,
+                video_url TEXT,
+                voice_note_url TEXT,
                 starting_price DECIMAL(10, 2) NOT NULL,
                 minimum_price DECIMAL(10, 2) NOT NULL,
-                status VARCHAR(50) DEFAULT 'available',
-                shopify_product_id VARCHAR(255),
+                status TEXT DEFAULT 'available',
+                shopify_product_id TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         // 3. Conversations
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS conversations (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                customer_phone VARCHAR(50) NOT NULL UNIQUE,
-                customer_name VARCHAR(100),
-                status VARCHAR(50) DEFAULT 'agent_active',
-                known_slots JSON,
-                selected_product_id INT,
+                id SERIAL PRIMARY KEY,
+                customer_phone TEXT NOT NULL UNIQUE,
+                customer_name TEXT,
+                status TEXT DEFAULT 'agent_active',
+                known_slots JSONB,
+                profile_picture TEXT,
+                selected_product_id INTEGER,
                 current_offer DECIMAL(10, 2),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (selected_product_id) REFERENCES products(id) ON DELETE SET NULL
             )
         `);
 
         // 4. Messages
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                conversation_id INT NOT NULL,
-                sender VARCHAR(50) NOT NULL,
-                type VARCHAR(50) NOT NULL,
+                id SERIAL PRIMARY KEY,
+                conversation_id INTEGER NOT NULL,
+                sender TEXT NOT NULL,
+                type TEXT NOT NULL,
                 text_content TEXT,
-                media_url VARCHAR(1024),
+                media_url TEXT,
                 voice_transcript TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
@@ -89,48 +85,95 @@ async function setupDatabase() {
         `);
 
         // 5. Agent Config
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS agent_config (
-                id INT PRIMARY KEY DEFAULT 1,
+                id SERIAL PRIMARY KEY,
                 system_prompt TEXT NOT NULL
             )
         `);
-        await connection.execute(`
-            INSERT IGNORE INTO agent_config (id, system_prompt) 
+        await db.execute(`
+            INSERT INTO agent_config (id, system_prompt) 
             VALUES (1, 'You are a helpful AI assistant for Pawanda e-commerce.')
+            ON CONFLICT (id) DO NOTHING
         `);
 
         // 6. Orders
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS orders (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                conversation_id INT,
-                product_id INT,
-                customer_name VARCHAR(100) NOT NULL,
-                customer_phone VARCHAR(50) NOT NULL,
+                id SERIAL PRIMARY KEY,
+                conversation_id INTEGER,
+                product_id INTEGER,
+                custom_product_name TEXT,
+                customer_name TEXT NOT NULL,
+                customer_phone TEXT NOT NULL,
                 address TEXT,
+                city TEXT,
+                zip_code TEXT,
                 price DECIMAL(10, 2),
-                status VARCHAR(50) DEFAULT 'pending',
+                status TEXT DEFAULT 'pending',
+                payment_status TEXT DEFAULT 'Pending',
+                payment_method TEXT DEFAULT 'COD',
+                delivery_method TEXT DEFAULT 'Standard',
+                delivery_fee DECIMAL(10, 2),
+                items JSONB,
+                timeline JSONB,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
                 FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
             )
         `);
 
         // 7. Policies
-        await connection.execute(`
+        await db.execute(`
             CREATE TABLE IF NOT EXISTS policies (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
                 content TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // 8. Order Notes
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS order_notes (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER,
+                note TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )
+        `);
+        
+        // 9. Order Attachments
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS order_attachments (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER,
+                type TEXT,
+                file_url TEXT,
+                file_name TEXT,
+                file_type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )
+        `);
+        
+        // 10. Predefined Voices
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS predefined_voices (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                media_url TEXT,
+                mime_type TEXT,
+                duration INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         console.log('All tables created successfully.');
-        await connection.end();
+        await db.end();
     } catch (e) {
         console.error('Database setup failed:', e.message);
     }
