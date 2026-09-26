@@ -2,6 +2,7 @@
 ﻿import OrdersPage from './OrdersPage';
 import AnalyticsPage from './AnalyticsPage';
 import PredefinedVoicesPage from './PredefinedVoicesPage';
+import CustomersPage from './CustomersPage';
 import LiveConversations from './LiveConversations';
 import { SharedVoiceRecorder } from './SharedVoiceRecorder';
 import React, { useState, useEffect, useRef } from 'react';
@@ -44,7 +45,7 @@ import {
     ClipboardList,
     FileKey,
     BarChart2,
-    
+    Users,
 } from 'lucide-react';
 
 const apiGuidanceData = {
@@ -1601,6 +1602,15 @@ const WhatsAppDashboard = () => {
                         <BarChart2 size={17} />
                         Analytics & Insights
                     </button>
+                    <button 
+                        onClick={() => setSubTab('customers')}
+                        className={`text-left px-4 py-3 rounded-xl font-medium text-xs transition-all flex items-center gap-3 ${
+                            subTab === 'customers' ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/30 font-semibold' : 'text-slate-400 hover:bg-teal-950/40 hover:text-slate-200'
+                        }`}
+                    >
+                        <Users size={17} />
+                        Customers
+                    </button>
                 </nav>
 
                 {/* Dashboard Stats */}
@@ -2263,6 +2273,14 @@ const WhatsAppDashboard = () => {
                     <div className="flex-1 overflow-auto bg-[#0a0f1c] p-6 lg:p-8">
                         <div className="max-w-7xl mx-auto">
                             <AnalyticsPage />
+                        </div>
+                    </div>
+                )}
+                {/* ===== CUSTOMERS TAB ===== */}
+                {subTab === 'customers' && (
+                    <div className="flex-1 overflow-auto bg-[#071317] p-6 lg:p-8">
+                        <div className="max-w-7xl mx-auto">
+                            <CustomersPage />
                         </div>
                     </div>
                 )}
