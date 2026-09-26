@@ -25,6 +25,7 @@ const policyRoutes = require('./modules/api/policies');
 const aiRoutes = require('./modules/api/ai');
 const analyticsRoutes = require('./modules/api/analytics');
 const predefinedVoicesRoutes = require('./modules/api/predefined_voices');
+const customerRoutes = require('./modules/api/customers');
 
 app.use('/webhook/whatsapp', whatsappRoutes);
 app.use('/api/listings', shopifyRoutes);
@@ -34,6 +35,7 @@ app.use('/api/policies', policyRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/predefined-voices', predefinedVoicesRoutes);
+app.use('/api/customers', customerRoutes);
 app.use('/api', apiRoutes);
 
 // Catch-all to serve frontend index.html for React Router
