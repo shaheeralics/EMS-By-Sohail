@@ -171,23 +171,23 @@ Pawanda is designed to automate conversational commerce. It is the perfect solut
 ## 👨‍💻 Author
 
 <div align="center">
-  <a href="https://sohail.devsil.com">
-    <img src="https://github.com/sohail-ahmed-26.png" width="150" style="border-radius: 50%; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);" alt="Sohail Ahmed" />
+  <a href="https://anees.devsil.com">
+    <img src="https://github.com/aneeskhann5577-dotcom.png" width="150" style="border-radius: 50%; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);" alt="Anees Ur Rehman" />
   </a>
   <br />
-  <h3><b>Sohail Ahmed</b></h3>
-  <p><i>AI Engineer & Data Scientist</i></p>
+  <h3><b>Anees Ur Rehman</b></h3>
+  <p><i>AI Engineer</i></p>
   
   <p align="center">
-    <a href="https://sohail.devsil.com">
+    <a href="https://anees.devsil.com">
       <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/chrome/chrome-original.svg" width="30" alt="Website" title="Portfolio" />
     </a>
     &nbsp;&nbsp;
-    <a href="https://github.com/sohail-ahmed-26">
+    <a href="https://github.com/aneeskhann5577-dotcom">
       <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" width="30" alt="GitHub" title="GitHub" />
     </a>
     &nbsp;&nbsp;
-    <a href="https://linkedin.com/in/sohail-ahmed-26">
+    <a href="https://www.linkedin.com/in/anees-khan-devsil/">
       <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg" width="30" alt="LinkedIn" title="LinkedIn" />
     </a>
   </p>
