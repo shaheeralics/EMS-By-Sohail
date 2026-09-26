@@ -12,10 +12,8 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Setup simple health check
-app.get('/', (req, res) => {
-  res.send('Pawanda Backend Running');
-});
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Import modules
 const whatsappRoutes = require('./modules/whatsapp');
@@ -37,6 +35,11 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/predefined-voices', predefinedVoicesRoutes);
 app.use('/api', apiRoutes);
+
+// Catch-all to serve frontend index.html for React Router
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 
